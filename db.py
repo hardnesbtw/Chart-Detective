@@ -3,29 +3,18 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 SqlAlchemyBase = declarative_base()
 
-__factory = None
+Session = None
 
 
-def global_init(db_file):
-    global __factory
+def init_db(db_file):
+    global Session
+    engine = sa.create_engine(f"sqlite:///{db_file}?check_same_thread=False")
+    Session = sessionmaker(bind=engine)
 
-    if __factory:
-        return
-
-    if not db_file or not db_file.strip():
-        raise Exception("Необходимо указать файл базы данных.")
-
-    conn_str = f"sqlite:///{db_file.strip()}?check_same_thread=False"
-    print(f"Подключение к базе данных по адресу {conn_str}")
-
-    engine = sa.create_engine(conn_str, echo=False)
-    __factory = sessionmaker(bind=engine)
-
-    import db_models
-
+    import db_models  # noqa: F401
     SqlAlchemyBase.metadata.create_all(engine)
+    print(f"База данных подключена: {db_file}")
 
 
 def create_session():
-    global __factory
-    return __factory()
+    return Session()
