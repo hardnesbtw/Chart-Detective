@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Результат раунда {{ result.round }} — Chart Detective{% endblock %}
+
+{% block content %}
+<div class="round-result-page">
+    <div class="container">
+        <div class="rr-card">
+            <div class="rr-header">
+                <span class="rr-round-label">Раунд {{ result.round }} из {{ total_rounds }}</span>
+                <div class="rr-badge-row">
+                    {% if result.match_type == 'exact' %}
+                        <span class="badge badge-exact rr-badge"><i class="ti ti-target-arrow"></i> Точное попадание!</span>
+                    {% elif result.match_type == 'neighbor_1' %}
+                        <span class="badge badge-neighbor1 rr-badge"><i class="ti ti-map-pin-2"></i> Сосед 1-го порядка</span>
+                    {% elif result.match_type == 'neighbor_2' %}
+                        <span class="badge badge-neighbor2 rr-badge"><i class="ti ti-map-pin-2"></i> Сосед 2-го порядка</span>
+                    {% elif result.match_type == 'no_answer' %}
+                        <span class="badge badge-noanswer rr-badge"><i class="ti ti-clock-x"></i> Время вышло</span>
+                    {% elif result.match_type == 'skipped' %}
+                        <span class="badge badge-skipped rr-badge"><i class="ti ti-player-skip-forward"></i> Пропущен</span>
+                    {% elif result.match_type == 'error' %}
+                        <span class="badge badge-error rr-badge"><i class="ti ti-alert-triangle"></i> Ошибка загрузки</span>
+                    {% else %}
+                        <span class="badge badge-wrong rr-badge"><i class="ti ti-x"></i> Мимо</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="rr-countries">
+                <div class="rr-country-block">
+                    <span class="rr-country-label"><i class="ti ti-map-pin-filled"></i> Правильный ответ</span>
+                    <span class="rr-country-name rr-correct">{{ result.correct_country }}</span>
+                </div>
+                <div class="rr-divider"><i class="ti ti-arrows-right-left"></i></div>
+                <div class="rr-country-block">
+                    <span class="rr-country-label"><i class="ti ti-hand-finger"></i> Ваш выбор</span>
+                    <span class="rr-country-name {% if result.match_type == 'exact' %}rr-correct{% elif result.match_type in ['wrong', 'no_answer', 'skipped', 'error'] %}rr-wrong{% endif %}">
+                        {{ result.selected_country or "Не выбрано" }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="rr-scores">
+                <div class="rr-score-item">
+                    <span class="rr-score-num">+{{ result.score }}</span>
+                    <span class="rr-score-desc">за этот раунд</span>
+                </div>
+                <div class="rr-score-sep"></div>
+                <div class="rr-score-item">
+                    <span class="rr-score-num">{{ current_score }}</span>
+                    <span class="rr-score-desc">всего очков</span>
+                </div>
+            </div>
+
+            <div class="rr-actions">
+                {% if is_last %}
+                    <a href="{{ url_for('results') }}" class="btn btn-primary btn-lg btn-block">
+                        <i class="ti ti-flag-3-filled"></i>
+                        <span>Смотреть итоги</span>
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('game') }}" class="btn btn-primary btn-lg btn-block" data-start-game>
+                        <i class="ti ti-player-skip-forward-filled"></i>
+                        <span>Следующий раунд</span>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

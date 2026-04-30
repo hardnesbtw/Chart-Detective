@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль — {{ user.nickname }}{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="container">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                {{ user.nickname[0].upper() }}
+            </div>
+            <div class="profile-info">
+                <h1>{{ user.nickname }}</h1>
+                <p class="profile-login">@{{ user.login }}</p>
+                <p class="profile-date">
+                    <i class="ti ti-calendar"></i>
+                    На сайте с {{ user.registered_at.strftime('%d.%m.%Y') }}
+                </p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="ti ti-gamepad-2"></i>
+                <div class="stat-value">{{ user.game_count }}</div>
+                <div class="stat-label">Игр сыграно</div>
+            </div>
+            <div class="stat-card stat-card-highlight">
+                <i class="ti ti-trophy"></i>
+                <div class="stat-value">{{ user.best_score }}</div>
+                <div class="stat-label">Лучший результат</div>
+            </div>
+            <div class="stat-card">
+                <i class="ti ti-chart-bar"></i>
+                {% if average_score is not none %}
+                    <div class="stat-value">{{ average_score }}</div>
+                {% else %}
+                    <div class="stat-value">—</div>
+                {% endif %}
+                <div class="stat-label">Средний счёт</div>
+            </div>
+        </div>
+
+        {% if games %}
+        <div class="games-history">
+            <h2>История игр</h2>
+            <div class="history-cards">
+                {% for game in games %}
+                <div class="history-card">
+                    <div class="history-card-left">
+                        <div class="history-number">#{{ game.id }}</div>
+                        <div class="history-date">
+                            <i class="ti ti-calendar-event"></i>
+                            {{ game.played_at.strftime('%d.%m.%Y, %H:%M') }}
+                        </div>
+                    </div>
+                    <div class="history-card-right">
+                        <div class="history-score">{{ game.total_score }}</div>
+                        <div class="history-bar">
+                            <div class="history-bar-fill" style="width: {{ (game.total_score / 3000 * 100) | round }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="ti ti-ghost empty-state-icon"></i>
+            <p>Вы ещё не сыграли ни одной игры</p>
+            <a href="{{ url_for('game_start') }}" class="btn btn-primary" style="margin-top:16px" data-start-game>
+                <i class="ti ti-player-play-filled"></i>
+                <span>Начать первую игру</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

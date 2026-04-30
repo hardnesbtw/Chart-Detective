@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Chart Detective — Угадай страну по музыке{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container">
+        <div class="hero-grid">
+            <div class="hero-copy">
+                <div class="hero-eyebrow">
+                    <i class="ti ti-world-pin"></i>
+                    <span>Музыкальная география</span>
+                </div>
+                <h1 class="hero-title">
+                    Угадай страну<br>
+                    по её <span class="text-accent">чартам</span>
+                </h1>
+                <p class="hero-lead">
+                    Слушай топ-5 треков из чарта случайной страны и определяй, откуда они,
+                    в списке стран по материкам. Чем точнее — тем больше очков.
+                </p>
+
+                <div class="hero-actions">
+                    <a href="{{ url_for('game_start') }}" class="btn btn-primary btn-lg" data-start-game>
+                        <i class="ti ti-player-play-filled"></i>
+                        <span>{% if current_user.is_authenticated %}Начать игру{% else %}Играть без аккаунта{% endif %}</span>
+                    </a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('profile') }}" class="btn btn-outline btn-lg">
+                            <i class="ti ti-user-circle"></i>
+                            <span>Мой профиль</span>
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('register') }}" class="btn btn-outline btn-lg">
+                            <i class="ti ti-user-plus"></i>
+                            <span>Создать аккаунт</span>
+                        </a>
+                    {% endif %}
+                </div>
+
+                <ul class="hero-meta">
+                    <li><i class="ti ti-clock-hour-4"></i> 60 секунд на раунд</li>
+                    <li><i class="ti ti-replace"></i> 3 раунда</li>
+                    <li><i class="ti ti-trophy"></i> до 3000 очков</li>
+                </ul>
+            </div>
+
+            <div class="hero-visual" aria-hidden="true">
+                <div class="stack">
+                    <div class="stack-card stack-card-1">
+                        <i class="ti ti-music"></i>
+                        <span>Top 5 · Чарт</span>
+                    </div>
+                    <div class="stack-card stack-card-2">
+                        <i class="ti ti-list-search"></i>
+                        <span>Выбор по материкам</span>
+                    </div>
+                    <div class="stack-card stack-card-3">
+                        <i class="ti ti-target-arrow"></i>
+                        <span>Угадай страну</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Как играть</span>
+            <h2 class="section-title">Четыре шага до победы</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon"><i class="ti ti-headphones"></i></span>
+                <h3>Слушай</h3>
+                <p>Получи топ-5 треков из чарта неизвестной страны. Анализируй язык, обложки, исполнителей.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon"><i class="ti ti-map-pin"></i></span>
+                <h3>Выбирай</h3>
+                <p>Выбери страну в аккуратном списке по материкам, когда поймёшь, откуда звучит эта музыка.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon"><i class="ti ti-hourglass-high"></i></span>
+                <h3>Успевай</h3>
+                <p>На каждый раунд — 60 секунд. Всего 3 раунда со случайными странами из чартов.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon"><i class="ti ti-chart-bar"></i></span>
+                <h3>Побеждай</h3>
+                <p>1000 очков за точное попадание, меньше — за соседей. Сохрани результат в профиле.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section section-muted">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Почему это интересно</span>
+            <h2 class="section-title">Музыка — лучший путеводитель</h2>
+        </div>
+        <div class="info-grid">
+            <div class="info-card">
+                <i class="ti ti-sparkles info-icon"></i>
+                <h3>Новые звуки</h3>
+                <p>Узнай, что слушают в разных странах. Расширь свои музыкальные горизонты без границ.</p>
+            </div>
+            <div class="info-card">
+                <i class="ti ti-brain info-icon"></i>
+                <h3>Тренируй интуицию</h3>
+                <p>Ищи зацепки в языке, ритмике и оформлении — развивай культурное чутьё играя.</p>
+            </div>
+            <div class="info-card">
+                <i class="ti ti-device-analytics info-icon"></i>
+                <h3>Следи за прогрессом</h3>
+                <p>Сохраняй результаты в профиле, следи за личным рекордом и историей всех игр.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% if not current_user.is_authenticated %}
+<section class="section">
+    <div class="container">
+        <div class="cta-banner">
+            <div class="cta-text">
+                <h2>Готов проверить слух?</h2>
+                <p>Ни регистрация, ни скачивание не нужны. Жми Play.</p>
+            </div>
+            <a href="{{ url_for('game_start') }}" class="btn btn-primary btn-lg" data-start-game>
+                <i class="ti ti-player-play-filled"></i>
+                <span>Играть</span>
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

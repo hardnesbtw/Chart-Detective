@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Результаты — Chart Detective{% endblock %}
+
+{% block content %}
+<div class="results-page">
+    <div class="container">
+        <div class="results-header">
+            <h1 class="results-title">
+                <i class="ti ti-flag-3-filled" style="color:var(--accent)"></i>
+                Игра завершена
+            </h1>
+            <div class="final-score">
+                <div class="score-label">Итоговый счёт</div>
+                <div class="score-value-big">{{ final_score }}</div>
+                <div class="score-max">из {{ max_possible }} возможных</div>
+            </div>
+        </div>
+
+        {% if round_results %}
+        <div class="rounds-summary">
+            <h2>Результаты по раундам</h2>
+            <div class="rounds-grid">
+                {% for result in round_results %}
+                <div class="round-result-card round-{{ result.match_type }}">
+                    <div class="round-header">
+                        <span class="round-label">Раунд {{ result.round }}</span>
+                        <span class="round-score">+{{ result.score }}</span>
+                    </div>
+                    <div class="round-match-badge">
+                        {% if result.match_type == 'exact' %}
+                            <span class="badge badge-exact"><i class="ti ti-target-arrow"></i> Точное попадание!</span>
+                        {% elif result.match_type == 'neighbor_1' %}
+                            <span class="badge badge-neighbor1"><i class="ti ti-map-pin-2"></i> Сосед 1-го порядка</span>
+                        {% elif result.match_type == 'neighbor_2' %}
+                            <span class="badge badge-neighbor2"><i class="ti ti-map-pin-2"></i> Сосед 2-го порядка</span>
+                        {% elif result.match_type == 'no_answer' %}
+                            <span class="badge badge-noanswer"><i class="ti ti-clock-x"></i> Время вышло</span>
+                        {% elif result.match_type == 'skipped' %}
+                            <span class="badge badge-skipped"><i class="ti ti-player-skip-forward"></i> Пропущен</span>
+                        {% elif result.match_type == 'error' %}
+                            <span class="badge badge-error"><i class="ti ti-alert-triangle"></i> Ошибка загрузки</span>
+                        {% else %}
+                            <span class="badge badge-wrong"><i class="ti ti-x"></i> Мимо</span>
+                        {% endif %}
+                    </div>
+                    <div class="round-details">
+                        <div class="round-detail">
+                            <span class="detail-label">Правильный ответ</span>
+                            <span class="detail-value detail-correct">{{ result.correct_country }}</span>
+                        </div>
+                        <div class="round-detail">
+                            <span class="detail-label">Ваш выбор</span>
+                            <span class="detail-value {% if result.match_type == 'exact' %}detail-correct{% elif result.match_type in ['wrong', 'no_answer'] %}detail-wrong{% endif %}">
+                                {{ result.selected_country or "Не выбрано" }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="scoring-info">
+            <h3>Система очков</h3>
+            <div class="scoring-grid">
+                <div class="scoring-item">
+                    <span class="scoring-points">1000</span>
+                    <span class="scoring-desc">Точное попадание</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-points">700</span>
+                    <span class="scoring-desc">Страна-сосед</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-points">400</span>
+                    <span class="scoring-desc">Сосед 2-го порядка</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-points">0</span>
+                    <span class="scoring-desc">Далеко от цели</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-actions">
+            <a href="{{ url_for('game_start') }}" class="btn btn-primary btn-lg" data-start-game>
+                <i class="ti ti-player-play-filled"></i>
+                <span>Сыграть ещё</span>
+            </a>
+            <a href="{{ url_for('index') }}" class="btn btn-outline btn-lg">
+                <i class="ti ti-home"></i>
+                <span>На главную</span>
+            </a>
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('profile') }}" class="btn btn-ghost btn-lg">
+                <i class="ti ti-user-circle"></i>
+                <span>Мой профиль</span>
+            </a>
+            {% endif %}
+        </div>
+
+        {% if not current_user.is_authenticated %}
+        <div class="results-cta">
+            <div class="cta-card">
+                <h3>Хотите сохранить результаты?</h3>
+                <p>Зарегистрируйтесь, чтобы отслеживать историю игр и личный рекорд</p>
+                <a href="{{ url_for('register') }}" class="btn btn-primary">
+                    <i class="ti ti-user-plus"></i>
+                    <span>Создать аккаунт</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Раунд {{ round_number }} — Chart Detective{% endblock %}
+
+{% block content %}
+<!-- Fixed overlay лоадер -->
+<div class="game-loader" id="gameLoader">
+    <div class="loader-inner">
+        <div class="loader-visual">
+            <div class="loader-ring"></div>
+            <div class="loader-ring loader-ring-2"></div>
+            <i class="ti ti-vinyl loader-icon"></i>
+        </div>
+        <div class="loader-title">Готовим раунд {{ round_number }}…</div>
+        <div class="loader-subtitle">
+            <i class="ti ti-download"></i>
+            <span id="loaderStatus">Загружаем чарт и подготавливаем треки</span>
+        </div>
+        <div class="loader-steps">
+            <span class="loader-step" data-step="fetch"><i class="ti ti-circle-dashed"></i> Запрос чарта</span>
+            <span class="loader-step" data-step="tracks"><i class="ti ti-circle-dashed"></i> Треки и обложки</span>
+            <span class="loader-step" data-step="audio"><i class="ti ti-circle-dashed"></i> Аудио</span>
+        </div>
+    </div>
+</div>
+
+<!-- Основной игровой экран (скрыт до загрузки) -->
+<div
+    class="container game-content"
+    id="gameContent"
+    data-round-time="{{ round_time }}"
+    data-data-url="{{ url_for('game_data') }}"
+    data-round-result-url="{{ url_for('round_result') }}"
+    data-results-url="{{ url_for('results') }}"
+    hidden
+>
+
+    <!-- Панель: счёт + таймер -->
+    <div class="game-panel">
+        <div class="game-info">
+            <div class="info-pill">
+                <span class="info-pill-label">Раунд</span>
+                <span class="info-pill-value">{{ round_number }} / {{ total_rounds }}</span>
+            </div>
+            <div class="info-pill">
+                <span class="info-pill-label">Счёт</span>
+                <span class="info-pill-value" id="currentScore">{{ current_score }}</span>
+            </div>
+        </div>
+        <div class="timer" id="timer">
+            <i class="ti ti-clock-hour-4"></i>
+            <span class="timer-value" id="timerValue">{{ round_time }}</span>
+        </div>
+    </div>
+
+    <!-- Игровая область: треки слева, выбор страны справа -->
+    <div class="game-layout">
+
+        <!-- Список треков -->
+        <div class="tracks-section">
+            <div class="section-sub-head">
+                <h2><i class="ti ti-playlist"></i> Топ-5 треков</h2>
+                <p class="section-sub-hint">Слушай треки и угадывай страну</p>
+            </div>
+            <div class="tracks-list" id="tracksList"></div>
+        </div>
+
+        <!-- Боковая панель: выбор страны + форма -->
+        <div class="game-sidebar">
+            <div class="country-picker-card">
+                <div class="section-sub-head country-picker-head">
+                    <h2><i class="ti ti-world-search"></i> Выбор страны</h2>
+                    <p class="section-sub-hint">Ищи по названию или выбери страну в нужном материке</p>
+                </div>
+
+                <div class="country-search-meta-row">
+                    <span class="country-search-meta" id="countrySearchMeta">{{ total_countries }} {{ total_countries|country_plural }} доступно</span>
+                </div>
+
+                <label class="country-search" for="countrySearchInput">
+                    <i class="ti ti-search"></i>
+                    <input
+                        type="search"
+                        id="countrySearchInput"
+                        placeholder="Найти страну"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                </label>
+
+                <div class="country-groups-wrap">
+                    <div class="country-groups" id="countryGroups">
+                        {% for group in country_groups %}
+                            <section class="country-group" data-country-group>
+                                <div class="country-group-head">
+                                    <div class="country-group-title">
+                                        <i class="{{ group.icon }}"></i>
+                                        <span>{{ group.label }}</span>
+                                    </div>
+                                    <span class="country-group-count" data-group-count>{{ group.countries|length }} {{ group.countries|length|country_plural }}</span>
+                                </div>
+                                <div class="country-options">
+                                    {% for country in group.countries %}
+                                        <button
+                                            type="button"
+                                            class="country-option"
+                                            data-country-option
+                                            data-iso="{{ country.iso }}"
+                                            data-name="{{ country.name }}"
+                                            data-search="{{ country.search_name }}"
+                                            aria-pressed="false"
+                                        >
+                                            <span class="country-option-name">{{ country.name }}</span>
+                                        </button>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endfor %}
+                    </div>
+                    <div class="country-empty-state" id="countryEmptyState" hidden>
+                        <i class="ti ti-map-search"></i>
+                        <span>По этому запросу страны не найдены</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Форма ответа -->
+            <form method="POST" action="{{ url_for('game_answer') }}" id="gameForm">
+                <input type="hidden" name="selected_country" id="selectedCountryInput" value="">
+                <div class="selected-country-panel" id="selectedCountryPanel">
+                    <i class="ti ti-map-pin-filled"></i>
+                    <div class="selected-country-body">
+                        <span class="selected-country-label">Выбранная страна</span>
+                        <span class="selected-country-name" id="selectedCountryName">Не выбрано</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg btn-block" id="submitAnswer" disabled>
+                    <i class="ti ti-check"></i>
+                    <span>Подтвердить</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно обложки -->
+<dialog id="imageModal" class="image-modal">
+    <form method="dialog" class="image-modal-content">
+        <button class="image-modal-close" aria-label="Закрыть"><i class="ti ti-x"></i></button>
+        <img id="modalImage" src="" alt="">
+        <div class="image-modal-title" id="modalTitle"></div>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/game.js', v='20260429-audio-cache-preload') }}"></script>
+{% endblock %}
