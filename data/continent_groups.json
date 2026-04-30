@@ -1,0 +1,60 @@
+[
+    {
+        "id": "europe",
+        "label": "Европа",
+        "icon": "ti ti-building-bank",
+        "codes": [
+            "AT", "BE", "BG", "BY", "CH", "CY", "CZ", "DE", "DK", "EE",
+            "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT",
+            "LT", "LU", "LV", "MD", "MK", "MT", "NL", "NO", "PL", "PT",
+            "RO", "RS", "RU", "SE", "SI", "SK", "UA"
+        ]
+    },
+    {
+        "id": "asia",
+        "label": "Азия",
+        "icon": "ti ti-building-pavilion",
+        "codes": [
+            "AE", "AM", "AZ", "BH", "BT", "CN", "HK", "ID", "IL", "IN",
+            "JO", "JP", "KG", "KH", "KR", "KW", "KZ", "LA", "LB", "LK",
+            "MM", "MN", "MO", "MV", "MY", "NP", "OM", "PH", "PK", "QA",
+            "SA", "SG", "TH", "TJ", "TM", "TR", "TW", "UZ", "VN", "YE"
+        ]
+    },
+    {
+        "id": "africa",
+        "label": "Африка",
+        "icon": "ti ti-sun",
+        "codes": [
+            "AO", "BJ", "BW", "CD", "CG", "CI", "CM", "CV", "DZ", "EG",
+            "GH", "GM", "GW", "KE", "LR", "LY", "MA", "MG", "ML", "MU",
+            "MW", "MZ", "NA", "NE", "NG", "SC", "SL", "SN", "SZ", "TD",
+            "TN", "TZ", "UG", "ZA", "ZW"
+        ]
+    },
+    {
+        "id": "north-america",
+        "label": "Северная Америка",
+        "icon": "ti ti-trees",
+        "codes": [
+            "AG", "AI", "BB", "BM", "BS", "BZ", "CA", "CR", "DM", "DO",
+            "GD", "GT", "HN", "JM", "KN", "KY", "LC", "MS", "MX", "NI",
+            "PA", "PR", "SV", "TC", "TT", "US", "VC", "VG"
+        ]
+    },
+    {
+        "id": "south-america",
+        "label": "Южная Америка",
+        "icon": "ti ti-leaf",
+        "codes": [
+            "AR", "BO", "BR", "CL", "CO", "EC", "GY", "PE", "PY", "SR",
+            "UY", "VE"
+        ]
+    },
+    {
+        "id": "oceania",
+        "label": "Океания",
+        "icon": "ti ti-wave-sine",
+        "codes": ["AU", "FJ", "FM", "NZ", "PG", "SB"]
+    }
+]
