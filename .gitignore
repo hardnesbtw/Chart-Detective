@@ -1,0 +1,12 @@
+__pycache__/
+trash/
+.env
+tmp/
+old/
+venv/
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
+*.zip
+static/audio_cache/
