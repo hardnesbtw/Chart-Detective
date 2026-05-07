@@ -3,7 +3,6 @@
 {% block title %}Раунд {{ round_number }} — Chart Detective{% endblock %}
 
 {% block content %}
-<!-- Fixed overlay лоадер -->
 <div class="game-loader" id="gameLoader">
     <div class="loader-inner">
         <div class="loader-visual">
@@ -21,10 +20,15 @@
             <span class="loader-step" data-step="tracks"><i class="ti ti-circle-dashed"></i> Треки и обложки</span>
             <span class="loader-step" data-step="audio"><i class="ti ti-circle-dashed"></i> Аудио</span>
         </div>
+        <div class="loader-timeout" id="loaderTimeout" hidden>
+            <p>Загрузка занимает слишком долго — возможно, проблема с соединением</p>
+            <button class="btn btn-error" onclick="window.location.reload()">
+                <i class="ti ti-refresh"></i> Перезагрузить страницу
+            </button>
+        </div>
     </div>
 </div>
 
-<!-- Основной игровой экран (скрыт до загрузки) -->
 <div
     class="container game-content"
     id="gameContent"
@@ -35,7 +39,6 @@
     hidden
 >
 
-    <!-- Панель: счёт + таймер -->
     <div class="game-panel">
         <div class="game-info">
             <div class="info-pill">
@@ -53,10 +56,8 @@
         </div>
     </div>
 
-    <!-- Игровая область: треки слева, выбор страны справа -->
     <div class="game-layout">
 
-        <!-- Список треков -->
         <div class="tracks-section">
             <div class="section-sub-head">
                 <h2><i class="ti ti-playlist"></i> Топ-5 треков</h2>
@@ -65,7 +66,6 @@
             <div class="tracks-list" id="tracksList"></div>
         </div>
 
-        <!-- Боковая панель: выбор страны + форма -->
         <div class="game-sidebar">
             <div class="country-picker-card">
                 <div class="section-sub-head country-picker-head">
@@ -92,13 +92,16 @@
                     <div class="country-groups" id="countryGroups">
                         {% for group in country_groups %}
                             <section class="country-group" data-country-group>
-                                <div class="country-group-head">
+                                <button type="button" class="country-group-head" data-group-toggle>
                                     <div class="country-group-title">
                                         <i class="{{ group.icon }}"></i>
                                         <span>{{ group.label }}</span>
                                     </div>
-                                    <span class="country-group-count" data-group-count>{{ group.countries|length }} {{ group.countries|length|country_plural }}</span>
-                                </div>
+                                    <div class="country-group-right">
+                                        <span class="country-group-count" data-group-count>{{ group.countries|length }} {{ group.countries|length|country_plural }}</span>
+                                        <i class="ti ti-chevron-down country-group-chevron"></i>
+                                    </div>
+                                </button>
                                 <div class="country-options">
                                     {% for country in group.countries %}
                                         <button
@@ -107,6 +110,7 @@
                                             data-country-option
                                             data-iso="{{ country.iso }}"
                                             data-name="{{ country.name }}"
+                                            data-value="{{ country.value }}"
                                             data-search="{{ country.search_name }}"
                                             aria-pressed="false"
                                         >
@@ -124,7 +128,6 @@
                 </div>
             </div>
 
-            <!-- Форма ответа -->
             <form method="POST" action="{{ url_for('game_answer') }}" id="gameForm">
                 <input type="hidden" name="selected_country" id="selectedCountryInput" value="">
                 <div class="selected-country-panel" id="selectedCountryPanel">
@@ -143,7 +146,6 @@
     </div>
 </div>
 
-<!-- Модальное окно обложки -->
 <dialog id="imageModal" class="image-modal">
     <form method="dialog" class="image-modal-content">
         <button class="image-modal-close" aria-label="Закрыть"><i class="ti ti-x"></i></button>
@@ -154,5 +156,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/game.js', v='20260429-audio-cache-preload') }}"></script>
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
 {% endblock %}
