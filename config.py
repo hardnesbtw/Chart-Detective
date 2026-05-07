@@ -17,6 +17,7 @@ class Config:
     AVAILABLE_COUNTRIES_PATH = os.path.join(DATA_DIR, 'available_countries.json')
     CONTINENT_GROUPS_PATH = os.path.join(DATA_DIR, 'continent_groups.json')
     COUNTRY_NEIGHBORS_PATH = os.path.join(DATA_DIR, 'country_neighbors.json')
+    AUDIO_CACHE_DIR = os.path.join(BASE_DIR, 'static', 'audio_cache')
     ROUNDS_PER_GAME = 3
     ROUND_TIME_SECONDS = 60
     TRACKS_PER_ROUND = 5
