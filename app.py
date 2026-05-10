@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash
 
@@ -25,9 +25,11 @@ app.config.from_object(Config)
 
 db.init_db(app.config['DATABASE_PATH'])
 
-# Очищаем аудиокэш при каждом старте
+# Очищаем аудиокэш при каждом старте — файлы из предыдущей сессии уже сироты
 shutil.rmtree(Config.AUDIO_CACHE_DIR, ignore_errors=True)
 os.makedirs(Config.AUDIO_CACHE_DIR)
+shutil.rmtree(Config.IMAGE_CACHE_DIR, ignore_errors=True)
+os.makedirs(Config.IMAGE_CACHE_DIR)
 
 # Вход пользователей
 login_manager = LoginManager(app)
@@ -51,12 +53,23 @@ def country_word(count):
     return 'стран'
 
 
+@app.template_filter('country_display')
+def country_display_name(country_name):
+    return COUNTRY_DISPLAY_NAMES.get(country_name, country_name)
+
+
 # Данные стран
 with open(Config.AVAILABLE_COUNTRIES_PATH, encoding='utf-8') as f:
     ISO_TO_COUNTRY = json.load(f)
 
+with open(Config.COUNTRY_DISPLAY_NAMES_PATH, encoding='utf-8') as f:
+    COUNTRY_DISPLAY_NAMES = json.load(f)
+
 with open(Config.APPLE_MUSIC_COUNTRY_SLUG_PATH, encoding='utf-8') as f:
     APPLE_MUSIC_COUNTRY_SLUGS = json.load(f)
+
+with open(Config.CONTINENT_GROUPS_PATH, encoding='utf-8') as f:
+    CONTINENT_DEFINITIONS = json.load(f)
 
 COUNTRY_TO_ISO = {name: iso for iso, name in ISO_TO_COUNTRY.items()}
 
@@ -75,21 +88,55 @@ if missing:
 
 
 def make_country_groups():
-    countries_list = []
+    continent_map = {}
+    for group in CONTINENT_DEFINITIONS:
+        for code in group['codes']:
+            continent_map[str(code).strip().upper()] = group['id']
+
+    groups_by_id = {}
+    for group in CONTINENT_DEFINITIONS:
+        groups_by_id[group['id']] = {
+            'id': group['id'],
+            'label': group['label'],
+            'icon': group['icon'],
+            'countries': [],
+        }
+
+    other_group = {
+        'id': 'other',
+        'label': 'Другие страны',
+        'icon': 'ti ti-world',
+        'countries': [],
+    }
+
     for iso, name in COUNTRIES.items():
-        countries_list.append({
+        group_id = continent_map.get(iso)
+        if group_id:
+            group = groups_by_id[group_id]
+        else:
+            group = other_group
+
+        display_name = COUNTRY_DISPLAY_NAMES.get(name, name)
+        group['countries'].append({
             'iso': iso,
             'value': name,
-            'name': name,
-            'search_name': name.casefold(),
+            'name': display_name,
+            'search_name': f'{name} {display_name}'.casefold(),
         })
-    countries_list.sort(key=lambda c: c['name'].casefold())
-    return [{
-        'id': 'all',
-        'label': 'Все страны',
-        'icon': 'ti ti-world',
-        'countries': countries_list,
-    }]
+
+    groups = []
+    for group_info in CONTINENT_DEFINITIONS:
+        group = groups_by_id[group_info['id']]
+        if group['countries']:
+            groups.append(group)
+
+    if other_group['countries']:
+        groups.append(other_group)
+
+    for group in groups:
+        group['countries'].sort(key=lambda c: c['name'].casefold())
+
+    return groups
 
 
 COUNTRY_GROUPS = make_country_groups()
@@ -108,6 +155,32 @@ def load_user(user_id):
     return user
 
 
+# Удаление аудиофайлов раунда
+def delete_round_audio(tracks):
+    for track in tracks:
+        url = track.get('mp3_url') or ''
+        if not url.startswith('/static/audio_cache/'):
+            continue
+        path = os.path.join(Config.AUDIO_CACHE_DIR, url.split('/')[-1])
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+# Удаление изображений раунда
+def delete_round_images(tracks):
+    for track in tracks:
+        url = track.get('image') or ''
+        if not url.startswith('/static/image_cache/'):
+            continue
+        path = os.path.join(Config.IMAGE_CACHE_DIR, url.split('/')[-1])
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
 # Очистка игры
 def clear_game():
     session.pop('game_active', None)
@@ -116,6 +189,7 @@ def clear_game():
     session.pop('current_round', None)
     session.pop('game_score', None)
     session.pop('round_results', None)
+    session.pop('round_tracks', None)
 
 
 # Удаление незавершенной игры
@@ -123,6 +197,10 @@ def remove_unfinished_game():
     game_id = session.get('game_id')
     if not game_id:
         return
+
+    for tracks in session.get('round_tracks', {}).values():
+        delete_round_audio(tracks)
+        delete_round_images(tracks)
 
     db_session = db.create_session()
     try:
@@ -201,10 +279,14 @@ def register():
         error = None
         if not login_text or not nickname or not password or not password_repeat:
             error = 'Все поля обязательны для заполнения'
-        elif len(password) < 6:
-            error = 'Пароль должен содержать минимум 6 символов'
+        elif len(login_text) < 3 or len(login_text) > 50:
+            error = 'Логин должен быть от 3 до 50 символов'
+        elif len(nickname) < 2 or len(nickname) > 50:
+            error = 'Никнейм должен быть от 2 до 50 символов'
         elif password != password_repeat:
             error = 'Пароли не совпадают'
+        elif len(password) < 6:
+            error = 'Пароль должен содержать минимум 6 символов'
 
         if error:
             flash(error, 'error')
@@ -251,9 +333,11 @@ def login():
             flash('Неверный логин или пароль', 'error')
             return render_template('login.html')
 
-        login_user(user)
+        nickname = user.nickname
+        login_user(user, remember=True)
         db_session.close()
 
+        flash(f'Добро пожаловать, {nickname}!', 'success')
         return redirect(url_for('index'))
 
     return render_template('login.html')
@@ -266,6 +350,7 @@ def logout():
     remove_unfinished_game()
     clear_game()
     logout_user()
+    flash('Вы успешно вышли из системы', 'success')
     return redirect(url_for('index'))
 
 
@@ -276,8 +361,14 @@ def profile():
     db_session = db.create_session()
     user = db_session.get(User, current_user.id)
     games = user.get_game_history(db_session, limit=20)
+
+    if games:
+        average_score = round(sum(g.total_score for g in games) / len(games))
+    else:
+        average_score = None
+
     db_session.close()
-    return render_template('profile.html', user=user, games=games, average_score=None)
+    return render_template('profile.html', user=user, games=games, average_score=average_score)
 
 
 # Игра
@@ -338,6 +429,13 @@ def game_data():
         return jsonify({'status': 'finished'})
 
     current_round = session.get('current_round', 0)
+    round_key = str(current_round)
+
+    # Если треки уже загружены для этого раунда — отдаём из кэша
+    cached = session.get('round_tracks', {})
+    if round_key in cached:
+        return jsonify({'status': 'ok', 'tracks': cached[round_key]})
+
     country = session['game_countries'][current_round]
 
     try:
@@ -351,6 +449,9 @@ def game_data():
         save_round(reason='skipped')
         return jsonify({'status': 'skipped', 'message': 'Треки не найдены'})
 
+    cached[round_key] = tracks
+    session['round_tracks'] = cached
+
     return jsonify({'status': 'ok', 'tracks': tracks})
 
 
@@ -363,8 +464,22 @@ def game_answer():
     if is_game_done():
         return redirect(url_for('results'))
 
+    # Защита от повторной отправки — раунд уже сохранён
+    current_round = session.get('current_round', 0)
+    if len(session.get('round_results', [])) > current_round:
+        return redirect(url_for('round_result'))
+
     answer = request.form.get('selected_country', '').strip()
     save_round(selected_country=answer)
+
+    # Удаляем медиафайлы и треки завершённого раунда
+    cached = session.get('round_tracks', {})
+    round_key = str(current_round)
+    if round_key in cached:
+        delete_round_audio(cached[round_key])
+        delete_round_images(cached[round_key])
+        del cached[round_key]
+        session['round_tracks'] = cached
 
     return redirect(url_for('round_result'))
 
@@ -420,5 +535,35 @@ def results():
     )
 
 
+@app.errorhandler(404)
+def page_not_found(_):
+    return render_template('error.html', error_code=404, error_message='Страница не найдена'), 404
+
+
+@app.errorhandler(500)
+def server_error(_):
+    return render_template('error.html', error_code=500, error_message='Внутренняя ошибка сервера'), 500
+
+
+@app.errorhandler(403)
+def forbidden(_):
+    return render_template('error.html', error_code=403, error_message='Доступ запрещён'), 403
+
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/x-icon')
+
+
+@app.route('/apple-touch-icon.png')
+def apple_touch_icon():
+    return send_from_directory(app.static_folder, 'apple-touch-icon.png')
+
+
+@app.route('/apple-touch-icon-precomposed.png')
+def apple_touch_icon_precomposed():
+    return send_from_directory(app.static_folder, 'apple-touch-icon-precomposed.png')
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=os.getenv('FLASK_DEBUG', '').lower() in {'1', 'true', 'yes', 'on'})

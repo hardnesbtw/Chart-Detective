@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import hashlib
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -99,6 +100,15 @@ class SoundChartsService:
 
         tracks = self.get_top_tracks(country_code, limit=limit)
 
+        with ThreadPoolExecutor(max_workers=len(tracks)) as executor:
+            futures = {executor.submit(_download_image, t["image"], Config.IMAGE_CACHE_DIR): t for t in tracks if t["image"]}
+            for future in as_completed(futures):
+                track = futures[future]
+                try:
+                    track["image"] = future.result()
+                except Exception:
+                    pass  # оставляем оригинальный URL если скачать не удалось
+
         if not tracks or not self.apify_token:
             for track in tracks:
                 track["mp3_url"] = None
@@ -107,7 +117,7 @@ class SoundChartsService:
         client = ApifyClient(self.apify_token)
         spotify_links = [t["spotify_url"] for t in tracks]
 
-        logger.info("Apify Actor запущен, ссылок: %d", len(spotify_links))
+        logger.info("Apify Actor запущен с proxy group BUYPROXIES94952, ссылок: %d", len(spotify_links))
         result = client.actor("easyapi/spotify-music-mp3-downloader").call(
             run_input={
                 "links": spotify_links,
@@ -116,16 +126,43 @@ class SoundChartsService:
                     "apifyProxyGroups": ["BUYPROXIES94952"],
                 },
             },
+            memory_mbytes=2048,
+            timeout_secs=240,
         )
         cdn_urls = _parse_apify_dataset(client, result["defaultDatasetId"], spotify_links)
         logger.info("CDN-ссылок получено: %d из %d", sum(1 for u in cdn_urls if u), len(tracks))
 
         local_urls = [None] * len(tracks)
-        with ThreadPoolExecutor(max_workers=max(len(tracks), 1)) as executor:
+        failed = [i for i, u in enumerate(cdn_urls) if u is None]
+
+        # Успешные треки скачиваем сразу, параллельно ретраим упавшие одним Apify-вызовом
+        with ThreadPoolExecutor(max_workers=len(tracks) + 1) as executor:
             download_futures = {
                 executor.submit(_download_mp3, cdn_urls[i], Config.AUDIO_CACHE_DIR): i
                 for i in range(len(cdn_urls)) if cdn_urls[i]
             }
+
+            retry = None
+            if failed:
+                retry_links = [spotify_links[i] for i in failed]
+                logger.info("Ретрай %d треков через Apify", len(failed))
+
+                def do_retry():
+                    r = client.actor("easyapi/spotify-music-mp3-downloader").call(
+                        run_input={
+                            "links": retry_links,
+                            "proxyConfiguration": {
+                                "useApifyProxy": True,
+                                "apifyProxyGroups": ["BUYPROXIES94952"],
+                            },
+                        },
+                        memory_mbytes=1024,
+                        timeout_secs=120,
+                    )
+                    return _parse_apify_dataset(client, r["defaultDatasetId"], retry_links)
+
+                retry = executor.submit(do_retry)
+
             for future in as_completed(download_futures):
                 i = download_futures[future]
                 try:
@@ -133,9 +170,24 @@ class SoundChartsService:
                 except Exception as e:
                     logger.error("Трек %d не скачался: %s", i, e)
 
+            if retry:
+                retry_cdn = retry.result()
+                retry_futures = {
+                    executor.submit(_download_mp3, url, Config.AUDIO_CACHE_DIR): failed[j]
+                    for j, url in enumerate(retry_cdn) if url
+                }
+                for future in as_completed(retry_futures):
+                    i = retry_futures[future]
+                    try:
+                        local_urls[i] = future.result()
+                    except Exception as e:
+                        logger.error("Ретрай трек %d не скачался: %s", i, e)
+
         for i, track in enumerate(tracks):
             track["mp3_url"] = local_urls[i]
 
+        tracks = [t for t in tracks if t["mp3_url"]]
+        logger.info("Скачано треков: %d из %d", len(tracks), limit)
         return tracks
 
 
@@ -154,6 +206,19 @@ def _parse_apify_dataset(client, dataset_id, spotify_links):
     return cdn_urls
 
 
+def _download_image(url, cache_dir):
+    ext = url.split('?')[0].rsplit('.', 1)[-1][:4] or 'jpg'
+    name = hashlib.sha256(url.encode()).hexdigest()[:20] + '.' + ext
+    path = os.path.join(cache_dir, name)
+    if os.path.exists(path):
+        return '/static/image_cache/' + name
+    resp = requests.get(url, timeout=15)
+    resp.raise_for_status()
+    with open(path, 'wb') as f:
+        f.write(resp.content)
+    return '/static/image_cache/' + name
+
+
 def _download_mp3(cdn_url, cache_dir):
     name = hashlib.sha256(cdn_url.encode()).hexdigest()[:20] + '.mp3'
     path = os.path.join(cache_dir, name)
@@ -161,9 +226,24 @@ def _download_mp3(cdn_url, cache_dir):
     if os.path.exists(path):
         return '/static/audio_cache/' + name
 
-    resp = requests.get(cdn_url, timeout=120, stream=True)
-    resp.raise_for_status()
-    with open(path, 'wb') as f:
-        for chunk in resp.iter_content(chunk_size=65536):
-            f.write(chunk)
-    return '/static/audio_cache/' + name
+    tmp = path + '.tmp'
+    last_error = None
+
+    for attempt in range(3):
+        try:
+            resp = requests.get(cdn_url, timeout=120, stream=True)
+            resp.raise_for_status()
+            with open(tmp, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=65536):
+                    f.write(chunk)
+            os.rename(tmp, path)
+            return '/static/audio_cache/' + name
+        except Exception as e:
+            last_error = e
+            logger.warning("Ошибка загрузки %s (попытка %d): %s", name, attempt + 1, e)
+            if os.path.exists(tmp):
+                os.remove(tmp)
+            if attempt < 2:
+                time.sleep(2)
+
+    raise last_error
