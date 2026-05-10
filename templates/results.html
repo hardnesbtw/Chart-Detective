@@ -47,12 +47,12 @@
                     <div class="round-details">
                         <div class="round-detail">
                             <span class="detail-label">Правильный ответ</span>
-                            <span class="detail-value detail-correct">{{ result.correct_country }}</span>
+                            <span class="detail-value detail-correct">{{ result.correct_country|country_display }}</span>
                         </div>
                         <div class="round-detail">
                             <span class="detail-label">Ваш выбор</span>
                             <span class="detail-value {% if result.match_type == 'exact' %}detail-correct{% elif result.match_type in ['wrong', 'no_answer'] %}detail-wrong{% endif %}">
-                                {{ result.selected_country or "Не выбрано" }}
+                                {{ result.selected_country|country_display if result.selected_country else "Не выбрано" }}
                             </span>
                         </div>
                     </div>

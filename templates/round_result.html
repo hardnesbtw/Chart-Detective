@@ -30,13 +30,13 @@
             <div class="rr-countries">
                 <div class="rr-country-block">
                     <span class="rr-country-label"><i class="ti ti-map-pin-filled"></i> Правильный ответ</span>
-                    <span class="rr-country-name rr-correct">{{ result.correct_country }}</span>
+                    <span class="rr-country-name rr-correct">{{ result.correct_country|country_display }}</span>
                 </div>
                 <div class="rr-divider"><i class="ti ti-arrows-right-left"></i></div>
                 <div class="rr-country-block">
                     <span class="rr-country-label"><i class="ti ti-hand-finger"></i> Ваш выбор</span>
                     <span class="rr-country-name {% if result.match_type == 'exact' %}rr-correct{% elif result.match_type in ['wrong', 'no_answer', 'skipped', 'error'] %}rr-wrong{% endif %}">
-                        {{ result.selected_country or "Не выбрано" }}
+                        {{ result.selected_country|country_display if result.selected_country else "Не выбрано" }}
                     </span>
                 </div>
             </div>
