@@ -100,14 +100,15 @@ class SoundChartsService:
 
         tracks = self.get_top_tracks(country_code, limit=limit)
 
-        with ThreadPoolExecutor(max_workers=len(tracks)) as executor:
-            futures = {executor.submit(_download_image, t["image"], Config.IMAGE_CACHE_DIR): t for t in tracks if t["image"]}
-            for future in as_completed(futures):
-                track = futures[future]
-                try:
-                    track["image"] = future.result()
-                except Exception:
-                    pass  # оставляем оригинальный URL если скачать не удалось
+        if tracks:
+            with ThreadPoolExecutor(max_workers=len(tracks)) as executor:
+                futures = {executor.submit(_download_image, t["image"], Config.IMAGE_CACHE_DIR): t for t in tracks if t["image"]}
+                for future in as_completed(futures):
+                    track = futures[future]
+                    try:
+                        track["image"] = future.result()
+                    except Exception:
+                        pass
 
         if not tracks or not self.apify_token:
             for track in tracks:
@@ -135,7 +136,6 @@ class SoundChartsService:
         local_urls = [None] * len(tracks)
         failed = [i for i, u in enumerate(cdn_urls) if u is None]
 
-        # Успешные треки скачиваем сразу, параллельно ретраим упавшие одним Apify-вызовом
         with ThreadPoolExecutor(max_workers=len(tracks) + 1) as executor:
             download_futures = {
                 executor.submit(_download_mp3, cdn_urls[i], Config.AUDIO_CACHE_DIR): i
@@ -186,8 +186,17 @@ class SoundChartsService:
         for i, track in enumerate(tracks):
             track["mp3_url"] = local_urls[i]
 
+        for track in tracks:
+            if not track["mp3_url"]:
+                img = track.get("image") or ""
+                if img.startswith("/static/image_cache/"):
+                    try:
+                        os.remove(os.path.join(Config.IMAGE_CACHE_DIR, img.split("/")[-1]))
+                    except OSError:
+                        pass
+
         tracks = [t for t in tracks if t["mp3_url"]]
-        logger.info("Скачано треков: %d из %d", len(tracks), limit)
+        logger.info("Скачано треков: %d", len(tracks))
         return tracks
 
 
@@ -195,7 +204,7 @@ def _parse_apify_dataset(client, dataset_id, spotify_links):
     cdn_urls = []
     for idx, item in enumerate(client.dataset(dataset_id).iterate_items()):
         data = item.get("result")
-        if not data or data.get("error"):
+        if not data or not isinstance(data, dict) or data.get("error"):
             spotify_url = spotify_links[idx] if idx < len(spotify_links) else "?"
             logger.warning("Apify error трек %d (%s)", idx, spotify_url)
             cdn_urls.append(None)

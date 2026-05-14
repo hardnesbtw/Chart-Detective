@@ -21,7 +21,7 @@
                 </p>
 
                 <div class="hero-actions">
-                    <a href="{{ url_for('game_start') }}" class="btn btn-primary btn-lg" data-start-game>
+                    <a href="{{ url_for('game_start') }}" class="btn btn-primary btn-lg">
                         <i class="ti ti-player-play-filled"></i>
                         <span>{% if current_user.is_authenticated %}Начать игру{% else %}Играть без аккаунта{% endif %}</span>
                     </a>
@@ -130,7 +130,7 @@
                 <h2>Готов проверить слух?</h2>
                 <p>Ни регистрация, ни скачивание не нужны. Жми Play.</p>
             </div>
-            <a href="{{ url_for('game_start') }}" class="btn btn-primary btn-lg" data-start-game>
+            <a href="{{ url_for('game_start') }}" class="btn btn-primary btn-lg">
                 <i class="ti ti-player-play-filled"></i>
                 <span>Играть</span>
             </a>

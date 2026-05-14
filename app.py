@@ -155,30 +155,20 @@ def load_user(user_id):
     return user
 
 
-# Удаление аудиофайлов раунда
-def delete_round_audio(tracks):
+def delete_round_files(tracks):
     for track in tracks:
-        url = track.get('mp3_url') or ''
-        if not url.startswith('/static/audio_cache/'):
-            continue
-        path = os.path.join(Config.AUDIO_CACHE_DIR, url.split('/')[-1])
-        try:
-            os.remove(path)
-        except OSError:
-            pass
-
-
-# Удаление изображений раунда
-def delete_round_images(tracks):
-    for track in tracks:
-        url = track.get('image') or ''
-        if not url.startswith('/static/image_cache/'):
-            continue
-        path = os.path.join(Config.IMAGE_CACHE_DIR, url.split('/')[-1])
-        try:
-            os.remove(path)
-        except OSError:
-            pass
+        mp3 = track.get('mp3_url') or ''
+        if mp3.startswith('/static/audio_cache/'):
+            try:
+                os.remove(os.path.join(Config.AUDIO_CACHE_DIR, mp3.split('/')[-1]))
+            except OSError:
+                pass
+        img = track.get('image') or ''
+        if img.startswith('/static/image_cache/'):
+            try:
+                os.remove(os.path.join(Config.IMAGE_CACHE_DIR, img.split('/')[-1]))
+            except OSError:
+                pass
 
 
 # Очистка игры
@@ -199,8 +189,7 @@ def remove_unfinished_game():
         return
 
     for tracks in session.get('round_tracks', {}).values():
-        delete_round_audio(tracks)
-        delete_round_images(tracks)
+        delete_round_files(tracks)
 
     db_session = db.create_session()
     try:
@@ -436,7 +425,10 @@ def game_data():
     if round_key in cached:
         return jsonify({'status': 'ok', 'tracks': cached[round_key]})
 
-    country = session['game_countries'][current_round]
+    countries = session.get('game_countries', [])
+    if current_round >= len(countries):
+        return jsonify({'status': 'finished'})
+    country = countries[current_round]
 
     try:
         tracks = music_service.get_tracks(country, limit=Config.TRACKS_PER_ROUND)
@@ -453,6 +445,13 @@ def game_data():
     session['round_tracks'] = cached
 
     return jsonify({'status': 'ok', 'tracks': tracks})
+
+
+@app.route('/api/game/abort', methods=['POST'])
+def game_abort():
+    remove_unfinished_game()
+    clear_game()
+    return '', 204
 
 
 @app.route('/game/answer', methods=['POST'])
@@ -476,8 +475,7 @@ def game_answer():
     cached = session.get('round_tracks', {})
     round_key = str(current_round)
     if round_key in cached:
-        delete_round_audio(cached[round_key])
-        delete_round_images(cached[round_key])
+        delete_round_files(cached[round_key])
         del cached[round_key]
         session['round_tracks'] = cached
 

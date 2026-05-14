@@ -10,3 +10,4 @@ venv/
 .DS_Store
 *.zip
 static/audio_cache/
+static/image_cache/

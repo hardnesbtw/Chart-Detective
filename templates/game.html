@@ -22,9 +22,7 @@
         </div>
         <div class="loader-timeout" id="loaderTimeout" hidden>
             <p>Загрузка занимает слишком долго — возможно, проблема с соединением</p>
-            <button class="btn btn-error" onclick="window.location.reload()">
-                <i class="ti ti-refresh"></i> Перезагрузить страницу
-            </button>
+            <span class="loader-timeout-countdown" id="loaderAutoReloadText"></span>
         </div>
     </div>
 </div>
@@ -68,7 +66,7 @@
 
         <div class="game-sidebar">
             <div class="country-picker-card">
-                <div class="section-sub-head country-picker-head">
+                <div class="section-sub-head">
                     <h2><i class="ti ti-world-search"></i> Выбор страны</h2>
                     <p class="section-sub-hint">Ищи по названию или выбери страну в нужном материке</p>
                 </div>

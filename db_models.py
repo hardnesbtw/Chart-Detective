@@ -24,7 +24,6 @@ class User(SqlAlchemyBase, UserMixin):
     games = relationship('Game', back_populates='user')
 
     def register(self, db_session):
-        # Регистрация пользователя
         if db_session.query(User).filter(User.login == self.login).first():
             return 'Пользователь с таким логином уже существует'
         if db_session.query(User).filter(User.nickname == self.nickname).first():
@@ -34,11 +33,9 @@ class User(SqlAlchemyBase, UserMixin):
         return None
 
     def login_user(self, password):
-        # Проверка пароля
         return check_password_hash(self.password, password)
 
     def get_game_history(self, db_session, limit=20):
-        # История игр
         return db_session.query(Game).filter(
             Game.user_id == self.id,
             Game.is_finished.is_(True),
@@ -59,23 +56,16 @@ class Game(SqlAlchemyBase):
     rounds = relationship('Round', back_populates='game', order_by='Round.round_number')
 
     def start_game(self, db_session):
-        # Создание игры
         db_session.add(self)
         db_session.commit()
 
     def add_round(self, db_session, round_data):
-        # Добавление раунда
         round_data.game_id = self.id
         db_session.add(round_data)
         db_session.commit()
 
-    def calculate_total_score(self):
-        # Итоговый счет
-        return sum(r.round_score for r in self.rounds)
-
     def finish_game(self, db_session):
-        # Завершение игры
-        self.total_score = self.calculate_total_score()
+        self.total_score = sum(r.round_score for r in self.rounds)
         self.is_finished = True
 
         user = db_session.get(User, self.user_id) if self.user_id else None
@@ -102,13 +92,11 @@ class Round(SqlAlchemyBase):
     game = relationship('Game', back_populates='rounds')
 
     def check_answer(self, selected_country):
-        # Проверка ответа
         self.selected_country = selected_country
         self.round_score, self.match_type = calculate_score(self.correct_country, selected_country)
         return self.round_score > 0
 
     def get_result(self):
-        # Данные раунда
         return {
             'round': self.round_number,
             'correct_country': self.correct_country,

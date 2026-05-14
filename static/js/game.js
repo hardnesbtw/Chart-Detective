@@ -31,34 +31,84 @@ function pluralizeCountries(count) {
     return 'стран';
 }
 
-function setLoaderText(text) {
-    if (loaderText) loaderText.textContent = text;
+function markStep(step) {
+    const el = document.querySelector(`[data-step="${step}"]`);
+    if (!el) return;
+    el.querySelector('i').className = 'ti ti-circle-check';
+    el.classList.add('loader-step-done');
 }
 
 // Защита от возврата назад
 history.pushState(null, '', window.location.href);
 window.addEventListener('popstate', () => { window.location.href = '/'; });
 
+// Очистка кэша при уходе со страницы
+let leaving = false;
+window.addEventListener('beforeunload', () => {
+    if (!leaving) {
+        navigator.sendBeacon('/api/game/abort');
+    }
+});
+
 
 // Загрузка игры
 async function loadGame() {
-    setLoaderText('Загружаем чарт');
+    loaderText.textContent = 'Загружаем чарт';
+
+    const timeoutEl = document.getElementById('loaderTimeout');
+    const countdownEl = document.getElementById('loaderAutoReloadText');
+    let autoReloadTimer = null;
+    let countdownInterval = null;
+
+    // Через 2 минуты — показываем блок с кнопкой и запускаем обратный отсчёт
+    const showTimeoutTimer = setTimeout(() => {
+        if (timeoutEl) timeoutEl.hidden = false;
+
+        let secondsLeft = 60;
+        if (countdownEl) countdownEl.textContent = `Автоматическая перезагрузка через ${secondsLeft} сек.`;
+
+        countdownInterval = setInterval(() => {
+            secondsLeft -= 1;
+            if (countdownEl) countdownEl.textContent = `Автоматическая перезагрузка через ${secondsLeft} сек.`;
+        }, 1000);
+
+        // Через 3 минуты (ещё 60 сек) — авто-перезагрузка
+        autoReloadTimer = setTimeout(() => {
+            clearInterval(countdownInterval);
+            window.location.reload();
+        }, 60_000);
+    }, 120_000);
+
+    const clearLoadTimers = () => {
+        clearTimeout(showTimeoutTimer);
+        clearTimeout(autoReloadTimer);
+        clearInterval(countdownInterval);
+    };
+
+    const fetchPromise = fetch(dataUrl, { credentials: 'same-origin' });
+    markStep('fetch');
+    loaderText.textContent = 'Загружаем треки и аудио';
 
     let payload;
     try {
-        const response = await fetch(dataUrl, { credentials: 'same-origin' });
+        const response = await fetchPromise;
         payload = await response.json();
     } catch {
+        clearLoadTimers();
         alert('Не удалось загрузить данные раунда. Попробуйте ещё раз.');
         window.location.href = '/';
         return;
     }
 
+    clearLoadTimers();
+
     if (!payload || payload.status !== 'ok') {
         const status = payload ? payload.status : '';
         if (status === 'skipped' || status === 'error') {
+            leaving = true;
             window.location.href = roundResultUrl;
         } else if (status === 'finished') {
+            leaving = true;
             window.location.href = resultsUrl;
         } else {
             window.location.href = '/';
@@ -66,9 +116,14 @@ async function loadGame() {
         return;
     }
 
+    markStep('tracks');
+    await new Promise(r => setTimeout(r, 250));
+    markStep('audio');
+
     renderTracks(payload.tracks);
     content.hidden = false;
-    loader.hidden = true;
+    loader.classList.add('is-done');
+    setTimeout(() => { loader.hidden = true; }, 400);
 
     filterCountries(searchInput.value);
     startTimer();
@@ -160,15 +215,15 @@ const countryByIso = new Map(
     }])
 );
 
-let selectedCountryDisplayName = '';
-let selectedCountryValue = '';
+let selectedName = '';
+let selectedValue = '';
 
 // Выбранная страна
 function updateSelectedCountry() {
-    selectedInput.value = selectedCountryValue;
-    selectedNameText.textContent = selectedCountryDisplayName || 'Не выбрано';
-    selectedPanel.classList.toggle('active', Boolean(selectedCountryValue));
-    submitBtn.disabled = !selectedCountryValue;
+    selectedInput.value = selectedValue;
+    selectedNameText.textContent = selectedName || 'Не выбрано';
+    selectedPanel.classList.toggle('active', Boolean(selectedValue));
+    submitBtn.disabled = !selectedValue;
 }
 
 // Поиск стран
@@ -187,6 +242,11 @@ function filterCountries(query = '') {
         if (group.countText) {
             group.countText.textContent = `${visibleInThisGroup} ${pluralizeCountries(visibleInThisGroup)}`;
         }
+        if (queryLower && visibleInThisGroup > 0) {
+            group.box.classList.add('open');
+        } else {
+            group.box.classList.remove('open');
+        }
         visibleCountries += visibleInThisGroup;
     });
 
@@ -203,8 +263,8 @@ function selectCountry(isoCode) {
     const country = countryByIso.get(iso);
     if (!country) return;
 
-    selectedCountryDisplayName = country.displayName;
-    selectedCountryValue = country.value;
+    selectedName = country.displayName;
+    selectedValue = country.value;
     updateSelectedCountry();
 
     countryButtons.forEach(button => {
@@ -215,6 +275,11 @@ function selectCountry(isoCode) {
 }
 
 countryBox.addEventListener('click', e => {
+    const toggle = e.target.closest('[data-group-toggle]');
+    if (toggle) {
+        toggle.closest('[data-country-group]').classList.toggle('open');
+        return;
+    }
     const button = e.target.closest('[data-country-option]');
     if (button) selectCountry(button.dataset.iso);
 });
@@ -236,12 +301,14 @@ function startTimer() {
         if (timeLeft <= 10) timerBox.classList.add('timer-warning');
         if (timeLeft <= 0) {
             clearInterval(id);
+            leaving = true;
             tracksList.querySelectorAll('audio').forEach(a => a.pause());
             form.submit();
         }
     }, 1000);
 
     form.addEventListener('submit', () => {
+        leaving = true;
         clearInterval(id);
         submitBtn.disabled = true;
     }, { once: true });
