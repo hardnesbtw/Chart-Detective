@@ -309,6 +309,7 @@ a:hover { color: var(--accent-hover); }
     font-size: 1.15rem;
     font-variant-numeric: tabular-nums;
     font-weight: 700;
+    justify-content: center;
 }
 .timer-warning { background: var(--warning); color: #fff; }
 .section-sub-head { margin-bottom: 14px; }
@@ -369,6 +370,7 @@ a:hover { color: var(--accent-hover); }
     gap: 10px;
     max-height: min(58vh, 680px);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding-right: 4px;
 }
 .country-groups[hidden], .country-empty-state[hidden] { display: none; }
@@ -391,6 +393,7 @@ a:hover { color: var(--accent-hover); }
     font: inherit;
     text-align: left;
     cursor: pointer;
+    -webkit-appearance: none;
 }
 .country-option:hover { border-color: var(--border-strong); }
 .country-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
